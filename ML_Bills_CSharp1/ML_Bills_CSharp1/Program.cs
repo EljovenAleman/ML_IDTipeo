@@ -4,7 +4,7 @@ using Microsoft.ML;
 using Microsoft.ML.Data;
 
 
-string _trainingFilePath = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TrainingData_4.tsv";
+string _trainingFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TrainingData_4.tsv";
 
 string _modelFilePath = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TM_IDCargos_2.zip";
 string _modelFilePath2 = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TM_IDCargos_2.zip";
@@ -43,6 +43,7 @@ newData.IdTipo = Predicted_IdTipo.IdTipo;
 
 var Predicted_IdTipo2 = IdTipo2Predictor.Predict(newData);
 newData.IdTipo2 = Predicted_IdTipo2.IdTipo2;
+
 
 
 
@@ -96,10 +97,12 @@ IEstimator<ITransformer> ProcessDataIDTipo()
     var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "CargoOK");
 
     var pipeline = textpipeline
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdCargoKey","IdCargo"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdCargoEncoded", "IdCargoKey"))
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("Label", "IdTipo"))
-        .Append(_mlContext.Transforms.Concatenate("Features", "Features"))
+        .Append(_mlContext.Transforms.Concatenate("Features", "Features", "IdCargoEncoded"))
         .Append(_mlContext.MulticlassClassification.Trainers.OneVersusAll(_mlContext.BinaryClassification.Trainers.AveragedPerceptron(), labelColumnName: "Label"))
-        .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(IdCargoPrediction.IdCargo), "Label"))
+        .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(IdTipoPrediction.IdTipo), "Label"))
         .AppendCacheCheckpoint(_mlContext);
     return pipeline;
 }
@@ -109,10 +112,14 @@ IEstimator<ITransformer> ProcessDataIDTipo2()
     var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "CargoOK");
 
     var pipeline = textpipeline
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdCargoKey", "IdCargo"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdCargoEncoded", "IdCargoKey"))
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdTipoKey", "IdTipo"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdTipoEncoded", "IdCargoKey"))
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("Label", "IdTipo2"))
-        .Append(_mlContext.Transforms.Concatenate("Features", "Features"))
+        .Append(_mlContext.Transforms.Concatenate("Features", "Features", "IdCargoEncoded", "IdTipoEncoded"))
         .Append(_mlContext.MulticlassClassification.Trainers.OneVersusAll(_mlContext.BinaryClassification.Trainers.AveragedPerceptron(), labelColumnName: "Label"))
-        .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(IdCargoPrediction.IdCargo), "Label"))
+        .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(IdTipo2Prediction.IdTipo2), "Label"))
         .AppendCacheCheckpoint(_mlContext);
     return pipeline;
 }
