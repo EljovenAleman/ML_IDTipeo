@@ -4,12 +4,12 @@ using Microsoft.ML;
 using Microsoft.ML.Data;
 
 
-string _trainingFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TrainingData_4.tsv";
+string _trainingFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TrainingData_5.tsv";
 
-string _modelFilePath = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TM_IDCargos_2.zip";
-string _modelFilePath2 = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TM_IDCargos_2.zip";
-string _modelFilePath3 = "D:\\Repos\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\Models\\TM_IDCargos_2.zip";
-
+string IdCargoModelFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\NewModels\\IdCargoModel.zip";
+string IdTipoModelFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\NewModels\\IdTipoModel.zip";
+string IdTipo2ModelFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\NewModels\\IdTipo2Model.zip";
+string CargoOKModelFilePath = "D:\\GitHub Repos\\ML_IDTipeo\\ML_Bills_CSharp1\\ML_Bills_CSharp1\\NewModels\\CargoOKModel.zip";
 MLContext _mlContext;
 IDataView _trainingDataView;
 ITransformer _model;
@@ -20,20 +20,28 @@ _trainingDataView = _mlContext.Data.LoadFromTextFile<InputData>(_trainingFilePat
 
 var pipelineIDCargo = ProcessDataIDCargo();
 var IdCargoModel = BuildAndTrainModel(_trainingDataView, pipelineIDCargo);
+SaveModelAsFile(IdCargoModel, IdCargoModelFilePath);
 
 var pipelineIDTipo = ProcessDataIDTipo();
 var IdTipoModel = BuildAndTrainModel(_trainingDataView, pipelineIDTipo);
+SaveModelAsFile(IdTipoModel, IdTipoModelFilePath);
 
 var pipelineIDTipo2 = ProcessDataIDTipo2();
 var IdTipo2Model = BuildAndTrainModel(_trainingDataView, pipelineIDTipo2);
+SaveModelAsFile(IdTipo2Model, IdTipo2ModelFilePath);
 
-//SaveModelAsFile();
+var pipelineCargoOK = ProcessDataCargoOK();
+var CargoOkModel = BuildAndTrainModel(_trainingDataView, pipelineCargoOK);
+SaveModelAsFile(CargoOkModel, CargoOKModelFilePath);
+
+
 
 var IdCargoPredictor = _mlContext.Model.CreatePredictionEngine<InputData, IdCargoPrediction>(IdCargoModel);
 var IdTipoPredictor = _mlContext.Model.CreatePredictionEngine<InputData, IdTipoPrediction>(IdTipoModel);
 var IdTipo2Predictor = _mlContext.Model.CreatePredictionEngine<InputData, IdTipo2Prediction>(IdTipo2Model);
+var CargoOKPredictor = _mlContext.Model.CreatePredictionEngine<InputData, CargoOKPrediction>(CargoOkModel);
 
-var newData = new InputData { CargoOK = "Abono Roaming 600Mb Mundial" };
+var newData = new InputData { CargoOK = "1 GB Internet" };
 
 var Predicted_IdCargo = IdCargoPredictor.Predict(newData);
 newData.IdCargo = Predicted_IdCargo.IdCargo;
@@ -44,6 +52,8 @@ newData.IdTipo = Predicted_IdTipo.IdTipo;
 var Predicted_IdTipo2 = IdTipo2Predictor.Predict(newData);
 newData.IdTipo2 = Predicted_IdTipo2.IdTipo2;
 
+var Predicted_CargoOK = CargoOKPredictor.Predict(newData);
+newData.CargoOK = Predicted_CargoOK.CargoOK;
 
 
 
@@ -56,18 +66,18 @@ Console.ReadLine();
 
 
 
-string GetPrediction(string DatoLine)
-{
-    var model = _mlContext.Model.Load(_modelFilePath, out var modelInputSchema);
-    var billItem = new InputData() { CargoOK = DatoLine };
-    _predictionEngine = _mlContext.Model.CreatePredictionEngine<InputData, IdCargoPrediction>(model);
-    var result = _predictionEngine.Predict(billItem);
-    return result.IdCargo;
-}
+//string GetPrediction(string DatoLine)
+//{
+//    var model = _mlContext.Model.Load(_modelFilePath, out var modelInputSchema);
+//    var billItem = new InputData() { CargoOK = DatoLine };
+//    _predictionEngine = _mlContext.Model.CreatePredictionEngine<InputData, IdCargoPrediction>(model);
+//    var result = _predictionEngine.Predict(billItem);
+//    return result.IdCargo;
+//}
 
-void SaveModelAsFile()
+void SaveModelAsFile(ITransformer Model, string modelFilePath)
 {
-    _mlContext.Model.Save(_model, _trainingDataView.Schema, _modelFilePath);
+    _mlContext.Model.Save(Model, _trainingDataView.Schema, modelFilePath);
 }
 
 ITransformer BuildAndTrainModel(IDataView trainingDataView, IEstimator<ITransformer> pipeline)
@@ -81,7 +91,7 @@ ITransformer BuildAndTrainModel(IDataView trainingDataView, IEstimator<ITransfor
 
 IEstimator<ITransformer> ProcessDataIDCargo()
 {
-    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "CargoOK");
+    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "Cargo");
 
     var pipeline = textpipeline
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("Label", "IdCargo"))      
@@ -94,7 +104,7 @@ IEstimator<ITransformer> ProcessDataIDCargo()
 
 IEstimator<ITransformer> ProcessDataIDTipo()
 {
-    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "CargoOK");
+    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "Cargo");
 
     var pipeline = textpipeline
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdCargoKey","IdCargo"))
@@ -109,13 +119,13 @@ IEstimator<ITransformer> ProcessDataIDTipo()
 
 IEstimator<ITransformer> ProcessDataIDTipo2()
 {
-    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "CargoOK");
+    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "Cargo");
 
     var pipeline = textpipeline
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdCargoKey", "IdCargo"))
         .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdCargoEncoded", "IdCargoKey"))
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdTipoKey", "IdTipo"))
-        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdTipoEncoded", "IdCargoKey"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdTipoEncoded", "IdTipoKey"))
         .Append(_mlContext.Transforms.Conversion.MapValueToKey("Label", "IdTipo2"))
         .Append(_mlContext.Transforms.Concatenate("Features", "Features", "IdCargoEncoded", "IdTipoEncoded"))
         .Append(_mlContext.MulticlassClassification.Trainers.OneVersusAll(_mlContext.BinaryClassification.Trainers.AveragedPerceptron(), labelColumnName: "Label"))
@@ -125,10 +135,30 @@ IEstimator<ITransformer> ProcessDataIDTipo2()
 }
 
 
+IEstimator<ITransformer> ProcessDataCargoOK()
+{
+    var textpipeline = _mlContext.Transforms.Text.FeaturizeText("Features", "Cargo");
+
+    var pipeline = textpipeline
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdCargoKey", "IdCargo"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdCargoEncoded", "IdCargoKey"))
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdTipoKey", "IdTipo"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdTipoEncoded", "IdTipoKey"))
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("IdTipo2Key", "IdTipo2"))
+        .Append(_mlContext.Transforms.Categorical.OneHotEncoding("IdTipo2Encoded", "IdTipo2Key"))
+        .Append(_mlContext.Transforms.Conversion.MapValueToKey("Label", "CargoOK"))
+        .Append(_mlContext.Transforms.Concatenate("Features", "Features", "IdCargoEncoded", "IdTipoEncoded", "IdTipo2Encoded"))
+        .Append(_mlContext.MulticlassClassification.Trainers.OneVersusAll(_mlContext.BinaryClassification.Trainers.AveragedPerceptron(), labelColumnName: "Label"))
+        .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(CargoOKPrediction.CargoOK), "Label"))
+        .AppendCacheCheckpoint(_mlContext);
+    return pipeline;
+}
+
+
 public class InputData
 {
     [LoadColumn(0)]
-    public string CargoOK { get; set; }
+    public string Cargo { get; set; }
 
     [LoadColumn(1)]
     public string IdCargo { get; set; }
@@ -138,6 +168,9 @@ public class InputData
 
     [LoadColumn(3)]
     public string IdTipo2 { get; set; }    
+
+    [LoadColumn(4)]
+    public string CargoOK { get; set; }
 }
 
 public class IdCargoPrediction
@@ -156,6 +189,12 @@ public class IdTipo2Prediction
 {
     [ColumnName("PredictedLabel")]
     public string? IdTipo2 { get; set; }
+}
+
+public class CargoOKPrediction
+{
+    [ColumnName("PredictedLabel")]
+    public string? CargoOK { get; set; }
 }
 
 
